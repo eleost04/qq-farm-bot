@@ -112,3 +112,18 @@ jobs:
         run: |
           docker push "$IMAGE:$SHA"
           docker push "$IMAGE:latest"
+
+      # The router pulls by this digest, so a third-party mirror cannot swap the content
+      - name: Publish digest
+        if: steps.check.outputs.skip != 'true'
+        env:
+          SHA: ${{ steps.upstream.outputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE:$SHA" --format '{{json .Manifest}}' | jq -r .digest)
+          case "$digest" in sha256:*) ;; *) exit 1 ;; esac
+          printf 'SHA=%s\nDIGEST=%s\n' "$SHA" "$digest" > latest.env
+          old=$(gh api "repos/$GITHUB_REPOSITORY/contents/latest.env?ref=ci" --jq .sha 2>/dev/null || true)
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/latest.env" \
+            -f message="Publish image digest for ${SHA:0:12}" -f branch=ci \
+            -f content="$(base64 -w0 latest.env)" ${old:+-f sha="$old"} --silent
