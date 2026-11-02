@@ -85,7 +85,6 @@ jobs:
             ${{ env.IMAGE }}:${{ steps.upstream.outputs.sha }}
             ${{ env.IMAGE }}:latest
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.upstream.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
